@@ -241,6 +241,8 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
                 buffer.readUShort();
             } else if (opcode == 95) {
                 buffer.readUByte();
+            } else if (opcode == 96) {
+                buffer.readUByte();
             } else if (opcode == 249) {
 				int var1 = buffer.readUByte();
 				for (int var2 = 0; var2 < var1; var2++) {
