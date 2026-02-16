@@ -818,8 +818,8 @@ public class MainWindow extends Application {
 				boolean saveGroupName = (Boolean) Settings.properties.getOrDefault("save_group_name",false);
 
 				if (saveGroupName && !chunk.objectMapGroup.isEmpty() && !chunk.tileMapGroup.isEmpty()) {
-					saveNameTiles = chunk.objectMapGroup;
-					saveNameObjects = chunk.tileMapGroup;
+                    saveNameTiles = chunk.tileMapGroup;
+                    saveNameObjects = chunk.objectMapGroup;
 				}
 
 				File landscapeFile = RetentionFileChooser.showSaveDialog("Enter a name for tiles...", stage, saveNameTiles,
