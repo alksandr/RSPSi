@@ -59,7 +59,6 @@ import com.rspsi.game.save.AutoSaveJob;
 import com.rspsi.game.save.TileChange;
 import com.rspsi.core.misc.StatusUpdate;
 import com.rspsi.core.misc.ToolType;
-import com.rspsi.core.misc.XTEAManager;
 import com.rspsi.options.Config;
 import com.rspsi.options.Options;
 import com.rspsi.plugins.ui.ApplicationPluginLoader;
@@ -136,7 +135,6 @@ public class MainWindow extends Application {
 	private MultiRegionMapWindow fullMapView;
 	private SelectFilesWindow selectFiles;
 	private SelectPackWindow selectPack;
-	private SelectXTEAWindow selectXTEA;
 	private RemappingTool remappingTool;
 	private ConvertLandscapeTool convertLandscapeTool;
 
@@ -319,9 +317,6 @@ public class MainWindow extends Application {
 
 			MapView mapView = new MapView();
 			
-			selectXTEA = new SelectXTEAWindow();
-			selectXTEA.start(new Stage());
-
 			TileExportDialog export = new TileExportDialog();
 			export.start(new Stage());
 
@@ -481,35 +476,7 @@ public class MainWindow extends Application {
 			clientInstance.getGameCanvas().addEventHandler(KeyEvent.ANY, gameKeyListener);
 
 			clientInstance.fullMapVisible.bind(fullMapView.visibleProperty());
-		
-			
-			if(clientInstance.getCache() != null) {
-				if(!clientInstance.getCache().getIndexedFileSystem().is317()) {
-					String xteaLocation = Settings.getSetting("xteaLoc", "");
-					Consumer<Boolean> pickXTEA = (showError) -> {
-						String currentXTEALoc = Settings.getSetting("xteaLoc", "");
-						selectXTEA.setLocation(currentXTEALoc);
-						selectXTEA.show();
-						if(selectXTEA.valid()) {
-							XTEAManager.loadFromJSON(new File(selectXTEA.getJsonLocation()));
-							Settings.putSetting("xteaLoc", selectXTEA.getJsonLocation());
-							log.info("Loaded {} XTEAs", XTEAManager.getMaps().size());
-						} else if(showError) {
-							FXDialogs.showError(primaryStage,"Error loading XTEAS", "You need to select an XTEA json file otherwise maps may fail to load!");
-						}
-					};
-	
-					if(xteaLocation.isEmpty() || !lastCacheLoc.equals(Config.cacheLocation.get())) {
-						pickXTEA.accept(true);
-					} else {
-						XTEAManager.loadFromJSON(new File(xteaLocation));
-					}
-					
-					MenuItem changeXTEALoc = new MenuItem("Change XTEAs");
-					changeXTEALoc.setOnAction(evt -> pickXTEA.accept(false));
-					controller.getFileMenu().getItems().add(controller.getFileMenu().getItems().size() - 2, changeXTEALoc);
-				}
-			}
+
 			primaryStage.addEventHandler(KeyEvent.ANY, gameKeyListener);
 			primaryStage.focusedProperty().addListener((observable, oldValue, newValue) -> {
 				if(!newValue){
