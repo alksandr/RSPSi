@@ -61,7 +61,9 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
 				break;
 			}
 
-			if (opcode == 1) {
+			if (opcode == 2) {
+				definition.setName(buffer.readOSRSString());
+			} else if (opcode == 6) {
 				int count = buffer.readUByte();
 				if (count > 0) {
 					if (definition.getModelIds() == null) {
@@ -69,18 +71,16 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
 						int[] modelIds = new int[count];
 
 						for (int i = 0; i < count; i++) {
-							modelIds[i] = buffer.readUShort();
+							modelIds[i] = buffer.readInt();
 							modelTypes[i] = buffer.readUByte();
 						}
 						definition.setModelIds(modelIds);
 						definition.setModelTypes(modelTypes);
 					} else {
-						buffer.setPosition(buffer.getPosition() + count * 3);
+						buffer.setPosition(buffer.getPosition() + count * 5);
 					}
 				}
-			} else if (opcode == 2) {
-				definition.setName(buffer.readOSRSString());
-			} else if (opcode == 5) {
+			} else if (opcode == 7) {
 				int count = buffer.readUByte();
 				if (count > 0) {
 					if (definition.getModelIds() == null) {
@@ -88,11 +88,11 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
 						int[] modelIds = new int[count];
 
 						for (int i = 0; i < count; i++) {
-							modelIds[i] = buffer.readUShort();
+							modelIds[i] = buffer.readInt();
 						}
 						definition.setModelIds(modelIds);
 					} else {
-						buffer.setPosition(buffer.getPosition() + count * 2);
+						buffer.setPosition(buffer.getPosition() + count * 4);
 					}
 				}
 			} else if (opcode == 14) {
@@ -243,6 +243,25 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
                 buffer.readUByte();
             } else if (opcode == 96) {
                 buffer.readUByte();
+			} else if (opcode == 100) {
+				buffer.readUByte();
+				buffer.readUByte();
+				buffer.readOSRSString();
+			} else if (opcode == 101) {
+				buffer.readUByte();
+				buffer.readUShort();
+				buffer.readUShort();
+				buffer.readInt();
+				buffer.readInt();
+				buffer.readOSRSString();
+			} else if (opcode == 102) {
+				buffer.readUByte();
+				buffer.readUShort();
+				buffer.readUShort();
+				buffer.readUShort();
+				buffer.readInt();
+				buffer.readInt();
+				buffer.readOSRSString();
             } else if (opcode == 249) {
 				int var1 = buffer.readUByte();
 				for (int var2 = 0; var2 < var1; var2++) {

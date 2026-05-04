@@ -142,15 +142,15 @@ public class Cache {
         return null;
     }
 
-    public final byte[] readMap(int fileId, int regionId) {
+    public final byte[] readMap(int groupId, int fileId, int regionId) {
         if (mapRetrieverOverride != null) {
-            Optional<byte[]> data = mapRetrieverOverride.apply(fileId, regionId);
+            Optional<byte[]> data = mapRetrieverOverride.apply(groupId, regionId);
             if (data.isPresent())
                 return data.get();
         }
         if (indexedFileSystem.is317())
-            return mapArchive.archive(fileId).file(0).getData();
-        return mapArchive.archive(fileId, XTEAManager.lookupMap(regionId)).file(0).getData();
+            return mapArchive.archive(groupId).file(0).getData();
+        return mapArchive.archive(groupId).file(fileId).getData();
     }
 
     public final byte[] getFile(CacheFileType type, int file) {

@@ -41,17 +41,17 @@ public class ResourceProvider implements Runnable {
 		return musicPriorities[file] == 1;
 	}
 
-	public final void requestMap(int file, int regionId) {
-		if(Lists.newArrayList(requests).stream().anyMatch(node -> node != null && node.getType() == CacheFileType.MAP && node.getFile() == file)) {
+	public final void requestMap(int group, int file, int regionId) {
+		if(Lists.newArrayList(requests).stream().anyMatch(node -> node != null && node.getType() == CacheFileType.MAP && node.getGroup() == group && node.getFile() == file)) {
 			return;
 		}
 	
-		ResourceRequest node = new MapResourceRequest(regionId, file);
+		ResourceRequest node = new MapResourceRequest(regionId, group, file);
 		requests.add(node);
 	}
 
 	public final void requestFile(CacheFileType type, int file) {
-		if(Lists.newArrayList(requests).stream().anyMatch(node -> node != null && node.getType() == type && node.getFile() == file)) {
+		if(Lists.newArrayList(requests).stream().anyMatch(node -> node != null && node.getType() == type && node.getGroup() == file)) {
 			return;
 		}
 	
@@ -76,9 +76,9 @@ public class ResourceProvider implements Runnable {
 				byte[] data;
 				if(request.getType() == CacheFileType.MAP) {
 					MapResourceRequest mapReq = (MapResourceRequest) request;
-					data = cache.readMap(request.getFile(), mapReq.getRegionId());
+					data = cache.readMap(request.getGroup(), request.getFile(), mapReq.getRegionId());
 				} else {
-					data = cache.getFile(request.getType(), request.getFile());
+					data = cache.getFile(request.getType(), request.getGroup());
 				}
 				//System.out.println("data null ? " + (data == null));
 				if(data != null) {
@@ -91,7 +91,7 @@ public class ResourceProvider implements Runnable {
 			} catch(Exception ex) {
 				if(request.getAge() > 150000) {
 					requests.remove(request);
-					System.out.println("Failed to fetch resource " + request.getFile() + " from index " + request.getType());
+					System.out.println("Failed to fetch resource " + request.getGroup() + " from index " + request.getType());
 				}
 			}
 		}

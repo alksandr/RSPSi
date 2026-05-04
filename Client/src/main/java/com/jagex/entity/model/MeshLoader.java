@@ -43,7 +43,7 @@ public class MeshLoader {
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onResourceResponse(ResourceResponse response) {
         if (response.getRequest().getType() == CacheFileType.MODEL) {
-            load(response.decompress(), response.getRequest().getFile());
+            load(response.decompress(), response.getRequest().getGroup());
         }
     }
 

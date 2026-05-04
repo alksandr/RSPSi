@@ -623,7 +623,7 @@ public final class Client implements Runnable {
 					chunk.tileMapGroup = MapIndexLoader.instance.getGroupName(chunk.regionHash,MapType.LANDSCAPE);
 					chunk.tileMapName = MapIndexLoader.getName(cX, cY, MapType.LANDSCAPE);
 					if (landscapeMapId != -1) {
-						getProvider().requestMap(landscapeMapId, hash);
+						getProvider().requestMap(landscapeMapId, 0, hash);
 						System.out.println("Requesting landscape map " + landscapeMapId);
 					}
 
@@ -632,7 +632,7 @@ public final class Client implements Runnable {
 					chunk.objectMapGroup = MapIndexLoader.instance.getGroupName(chunk.regionHash,MapType.OBJECT);
 					chunk.objectMapName = MapIndexLoader.getName(cX, cY, MapType.OBJECT);
 					if (objectMapId != -1) {
-						getProvider().requestMap(objectMapId, hash);
+						getProvider().requestMap(objectMapId, 1, hash);
 						System.out.println("Requesting object map " + objectMapId);
 					}
 					log.info("Added chunk, obj/landscape {}/{} [{},{}]", objectMapId, landscapeMapId, chunk.objectMapGroup, chunk.tileMapGroup);
@@ -1368,7 +1368,7 @@ public final class Client implements Runnable {
 			}
 			
 			CacheFileType type = response.getRequest().getType();
-			int file = response.getRequest().getFile();
+			int file = response.getRequest().getGroup();
 			
 			//System.out.println("UNZIPPED " + type + ":" + file + " ATTEMPTING TO DELIVER");
 			lastDeliveredResource.set(response);
