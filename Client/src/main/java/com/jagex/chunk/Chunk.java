@@ -13,9 +13,9 @@ import com.jagex.entity.object.AnimableObject;
 import com.jagex.map.MapRegion;
 import com.jagex.map.SceneGraph;
 import com.jagex.map.object.SpawnedObject;
+import com.jagex.net.MapResourceRequest;
 import com.jagex.net.ResourceResponse;
 import com.jagex.util.ObjectKey;
-import com.rspsi.cache.CacheFileType;
 import com.rspsi.options.Options;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -42,15 +42,18 @@ public class Chunk {
 
 	@Subscribe(threadMode = ThreadMode.ASYNC)
 	public void onResourceResponse(ResourceResponse response) {
-		if(response.getRequest().getType() == CacheFileType.MAP) {
-			int fileId = response.getRequest().getFile();
-			if(fileId == tileMapId) {
-				tileMapData = response.decompress();
-				resourceDelivered.set(true);
-			} else if(fileId == objectMapId) {
-				objectMapData = response.decompress();
-				resourceDelivered.set(true);
+		if (response.getRequest() instanceof MapResourceRequest mapRequest && mapRequest.getRegionId() == regionHash) {
+			switch (mapRequest.getFile()) {
+				case 0:
+					tileMapData = response.decompress();
+					break;
+				case 1:
+					objectMapData = response.decompress();
+					break;
+				default:
+					throw new RuntimeException("Invalid map file id: " + mapRequest.getFile());
 			}
+			resourceDelivered.set(true);
 		}
 	}
 

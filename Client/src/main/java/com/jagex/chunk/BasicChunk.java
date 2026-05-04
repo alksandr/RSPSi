@@ -5,8 +5,6 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import com.jagex.Client;
-import com.jagex.map.MapRegion;
 import com.jagex.map.SceneGraph;
 import com.jagex.net.ResourceResponse;
 
@@ -22,7 +20,7 @@ public class BasicChunk {
 	@Subscribe(threadMode = ThreadMode.ASYNC)
 	public void onResourceResponse(ResourceResponse response) {
 		if(response.getRequest().getType() == CacheFileType.MAP) {
-			int fileId = response.getRequest().getFile();
+			int fileId = response.getRequest().getGroup();
 			if(fileId == landscapeId) {
 				landscapeBytes = response.decompress();
 			}

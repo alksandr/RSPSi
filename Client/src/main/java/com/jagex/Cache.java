@@ -16,7 +16,6 @@ import com.jagex.cache.graphics.Sprite;
 import com.jagex.net.ResourceProvider;
 import com.rspsi.cache.CacheFileType;
 import com.rspsi.core.misc.FixedIntegerKeyMap;
-import com.rspsi.core.misc.XTEAManager;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -142,15 +141,15 @@ public class Cache {
         return null;
     }
 
-    public final byte[] readMap(int fileId, int regionId) {
+    public final byte[] readMap(int groupId, int fileId, int regionId) {
         if (mapRetrieverOverride != null) {
-            Optional<byte[]> data = mapRetrieverOverride.apply(fileId, regionId);
+            Optional<byte[]> data = mapRetrieverOverride.apply(groupId, regionId);
             if (data.isPresent())
                 return data.get();
         }
         if (indexedFileSystem.is317())
-            return mapArchive.archive(fileId).file(0).getData();
-        return mapArchive.archive(fileId, XTEAManager.lookupMap(regionId)).file(0).getData();
+            return mapArchive.archive(groupId).file(0).getData();
+        return mapArchive.archive(groupId).file(fileId).getData();
     }
 
     public final byte[] getFile(CacheFileType type, int file) {
@@ -189,7 +188,7 @@ public class Cache {
     }
 
 
-    public final File writegetFile(CacheFileType index, String name, int file, byte[] data, int[] xteas) {
+    public final File writegetFile(CacheFileType index, String name, int file, byte[] data) {
         try {
             switch (index) {
                 case CONFIG:
