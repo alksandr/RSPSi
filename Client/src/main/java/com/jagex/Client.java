@@ -30,6 +30,8 @@ import com.rspsi.core.misc.Vector2;
 import com.rspsi.game.DisplayCanvas;
 import com.rspsi.options.KeyboardState;
 import com.rspsi.options.Options;
+import com.rspsi.ai.AiFeedback;
+import com.google.gson.Gson;
 import com.rspsi.plugins.core.ClientPluginLoader;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -62,7 +64,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -541,6 +545,8 @@ public final class Client implements Runnable {
 					e.printStackTrace();
 					error = true;
 					errorMessage = "The selected plugin was unable to load";
+					AiFeedback.recordError(plugin.getClass().getSimpleName() + ".onGameLoaded: "
+							+ e.getClass().getSimpleName() + ": " + e.getMessage());
 				}
 			});
 			
@@ -1190,9 +1196,66 @@ public final class Client implements Runnable {
 	public void drawGameImage() {
 		gameImageBuffer.finalize();
 		WritableImage finalImg = gameImageBuffer.finalImage;
+		AiFeedback.tick(gameImageBuffer.getWidth(), gameImageBuffer.getHeight(), gameImageBuffer.getPixels(), this::buildAiStatus);
 		Platform.runLater(() -> {
 			drawImage(finalImg);
 		});
+	}
+
+	private static final Gson AI_GSON = new Gson();
+
+	/** State snapshot written to logs/status.json alongside frame.png. */
+	private String buildAiStatus() {
+		Map<String, Object> s = new LinkedHashMap<>();
+		s.put("loadState", loadState.name());
+		s.put("fps", fps);
+		Runtime rt = Runtime.getRuntime();
+		s.put("memoryMB", (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024));
+		s.put("plane", Options.currentHeight.get());
+		s.put("tool", Options.currentTool.get().name());
+		s.put("error", error);
+		if (errorMessage != null && !errorMessage.isEmpty())
+			s.put("errorMessage", errorMessage);
+
+		List<Map<String, Object>> regions = new ArrayList<>();
+		for (Chunk c : chunks) {
+			Map<String, Object> r = new LinkedHashMap<>();
+			r.put("regionX", c.regionX);
+			r.put("regionY", c.regionY);
+			regions.add(r);
+		}
+		s.put("regionCount", regions.size());
+		s.put("regions", regions);
+
+		Map<String, Object> cam = new LinkedHashMap<>();
+		cam.put("x", xCameraPos / 128);
+		cam.put("y", yCameraPos / 128);
+		cam.put("curve", xCameraCurve);
+		cam.put("yaw", cameraYaw);
+		cam.put("roll", cameraRoll);
+		s.put("camera", cam);
+
+		Chunk chunk = getCurrentChunk();
+		if (chunk != null) {
+			Map<String, Object> region = new LinkedHashMap<>();
+			region.put("regionX", chunk.regionX);
+			region.put("regionY", chunk.regionY);
+			region.put("tileMap", chunk.tileMapName);
+			region.put("objectMap", chunk.objectMapName);
+			s.put("region", region);
+		}
+
+		Map<String, Object> hover = new LinkedHashMap<>();
+		hover.put("tileX", SceneGraph.hoveredTileX);
+		hover.put("tileY", SceneGraph.hoveredTileY);
+		s.put("hover", hover);
+
+		s.put("lastError", AiFeedback.lastError());
+		try {
+			return AI_GSON.toJson(s);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 	
 	public void drawImage(WritableImage finalImg) {
@@ -1525,8 +1588,15 @@ public final class Client implements Runnable {
 
 	public void shutdown() {
 		try {
-			cache.close();
-			singleton = null;
+			if (cache != null) {
+				cache.close();
+			}
+			// Only clear the singleton if it still refers to this instance; a new
+			// Client may already have been created (e.g. return to launcher and
+			// reopen) and must not have its singleton reference destroyed.
+			if (singleton == this) {
+				singleton = null;
+			}
 			mapScenes = null;
 			mapFunctions = null;
 			reset();
@@ -1608,7 +1678,7 @@ public final class Client implements Runnable {
 	private final long[] aLongArray7 = new long[10];
 	private int lastProcessedKey;
 	private final int[] pressedKeys = new int[128];
-	private int state;
+	private volatile int state;
 	private int timeDelta = 20;
 	private int unprocessedKeyCount;
 
@@ -1648,9 +1718,12 @@ public final class Client implements Runnable {
 	}
 
 	public void exit() {
+		// Only signal the render thread to stop. shutdown() is performed by the
+		// render thread itself at the end of run(), so the singleton and cache are
+		// never torn down while a frame is still being drawn (this used to cause an
+		// NPE in SceneGraph.renderAfterCycle when exit() was invoked from the
+		// JavaFX thread mid-frame).
 		state = -2;
-		shutdown();
-		
 	}
 
 	public int getCanvasHeight() {
@@ -1812,8 +1885,7 @@ public final class Client implements Runnable {
 				state--;
 
 				if (state == 0) {
-					exit();
-					return;
+					break;
 				}
 			}
 
@@ -1893,9 +1965,9 @@ public final class Client implements Runnable {
 			}
 		}
 
-		if (state == -1) {
-			exit();
-		}
+		// The render loop has ended; tear down on this thread so no frame can be
+		// in flight while the singleton/cache are being destroyed.
+		shutdown();
 	}
 
 

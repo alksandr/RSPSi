@@ -28,7 +28,9 @@ import org.major.map.RenderFlags;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
+import com.jagex.Cache;
 import com.jagex.Client;
+import com.rspsi.cache.CacheFileType;
 import com.jagex.cache.def.Floor;
 import com.jagex.cache.def.ObjectDefinition;
 import com.jagex.cache.loader.floor.FloorDefinitionLoader;
@@ -845,6 +847,49 @@ public class MainWindow extends Application {
 			clientInstance.xCameraPos = startX;
 			clientInstance.yCameraPos = startY;
 
+		});
+
+		controller.getSaveToCacheBtn().setOnAction(act -> {
+			String result = FXDialogs.showConfirm(stage,
+					"Save to Cache",
+					"This will overwrite map data in the cache. Continue?",
+					FXDialogs.YES, FXDialogs.NO);
+			if (!FXDialogs.YES.equals(result))
+				return;
+
+			Cache cache = clientInstance.getCache();
+			if (cache == null) {
+				FXDialogs.showError(stage, "Save Error", "No cache is loaded.");
+				return;
+			}
+
+			try {
+				int savedCount = 0;
+				for (Chunk chunk : clientInstance.chunks) {
+					if (chunk.tileMapId == -1 && chunk.objectMapId == -1)
+						continue;
+
+					byte[] tileMap = chunk.mapRegion.save_terrain_block(chunk);
+					byte[] objectMap = clientInstance.sceneGraph.saveObjects(chunk);
+
+					// rev237 maps are unencrypted (XTEA removed); write directly
+					if (chunk.tileMapId != -1 && tileMap != null)
+						cache.writegetFile(CacheFileType.MAP, null, chunk.tileMapId, tileMap);
+					if (chunk.objectMapId != -1 && objectMap != null)
+						cache.writegetFile(CacheFileType.MAP, null, chunk.objectMapId, objectMap);
+
+					savedCount++;
+				}
+
+				cache.getFile(CacheFileType.MAP).update();
+
+				FXDialogs.showInformation(stage, "Save Complete",
+						"Successfully saved " + savedCount + " region(s) to cache.");
+			} catch (Exception e) {
+				e.printStackTrace();
+				FXDialogs.showError(stage, "Error while saving to cache!",
+						"There was an error writing to the cache: " + e.getMessage());
+			}
 		});
 	}
 

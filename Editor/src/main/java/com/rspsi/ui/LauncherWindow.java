@@ -2,11 +2,11 @@ package com.rspsi.ui;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 
+import com.rspsi.ai.AiFeedback;
 import com.rspsi.util.FXUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -45,9 +45,9 @@ public class LauncherWindow extends Application {
 	public void start(Stage primaryStage) throws Exception {
 
 		java.nio.file.Files.createDirectories(Paths.get(System.getProperty("user.home"), ".rspsi"));
-		File logFile = new File(Paths.get(System.getProperty("user.home"), ".rspsi").toFile(), "log.txt");
 
-			System.setOut(new PrintStream(logFile));
+		AiFeedback.installConsoleTee();
+		AiFeedback.installFxHandler();
 
 		singleton = this;
 		this.primaryStage = primaryStage;

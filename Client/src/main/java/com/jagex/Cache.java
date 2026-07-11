@@ -48,9 +48,17 @@ public class Cache {
     private Index modelArchive, mapArchive, configArchive, skeletonArchive, skinArchive, spriteIndex, textureIndex, spotAnimIndex, varbitIndex, locIndex;
 
     private boolean isCacheNewOSRS(CacheLibrary library) {
+        if (library.is317() || library.isRS3())
+            return false;
         Index idx = library.index(2);
-        int indexCount = ArrayUtils.indexOf(library.indices(), null) - 1;
-        return idx.getRevision() >= 300 && indexCount <= 24;
+        if (idx == null || idx.archiveIds().length == 0)
+            return false;
+        int firstNull = ArrayUtils.indexOf(library.indices(), null);
+        int indexCount = firstNull < 0 ? library.indices().length : firstNull;
+        // OSRS caches have ~22-24 indices (RS3 has far more, already excluded above).
+        // Stock Jagex caches carry a config-index revision >=300, but repacked caches
+        // (e.g. GallifreyClient) reset it to 0 - so gate on structure, not revision.
+        return indexCount <= 24;
     }
 
     public Cache(Path path) {
@@ -84,8 +92,8 @@ public class Cache {
             varbitIndex = indexedFileSystem.index(22);
             locIndex = indexedFileSystem.index(16);
             log.info("Loaded cache in RS3 format!");
-        } else if (indexedFileSystem.isRS3()) {
-            throw new UnsupportedOperationException("Cache format not supported!");
+        } else {
+            throw new IllegalStateException("Unrecognized cache format at " + path);
         }
         resourceProvider = new ResourceProvider(this);
         Thread t = new Thread(resourceProvider);
@@ -188,23 +196,30 @@ public class Cache {
     }
 
 
+    /**
+     * Adds a file to an archive AND flags the archive dirty. displee's add(int,byte[])
+     * does NOT flag, so index.update() would otherwise write nothing (silent no-op save).
+     */
+    private File addAndFlag(Index index, int archiveId, byte[] data) {
+        Archive archive = index.archive(archiveId);
+        File added = archive.add(0, data);
+        archive.flag();
+        return added;
+    }
+
     public final File writegetFile(CacheFileType index, String name, int file, byte[] data) {
         try {
             switch (index) {
                 case CONFIG:
-                   // configArchive.createIfNotExist(file);
-                    return configArchive.archive(file).add(0, data);
+                    return addAndFlag(configArchive, file, data);
                 case MODEL:
-                   // modelArchive.createIfNotExist(file);
-                    return modelArchive.archive(file).add(0, data);
+                    return addAndFlag(modelArchive, file, data);
                 case ANIMATION:
-                    //skinArchive.createIfNotExist(file);
-                    return skinArchive.archive(file).add(0, data);
+                    return addAndFlag(skinArchive, file, data);
                 case SOUND:
                     break;
                 case MAP:
-                   // mapArchive.createIfNotExist(file);
-                    return mapArchive.archive(file).add(0, data);
+                    return addAndFlag(mapArchive, file, data);
                 case TEXTURE:
                     break;
                 case SPOT:

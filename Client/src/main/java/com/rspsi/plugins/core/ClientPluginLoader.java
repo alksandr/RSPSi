@@ -1,7 +1,6 @@
 package com.rspsi.plugins.core;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -54,12 +53,9 @@ public class ClientPluginLoader {
         	count++;
         });
         log.info("Loaded {} client plugins!", count);
-        try {
-			urlClassLoader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-        
+        // Do NOT close urlClassLoader here: plugins lazily load classes long after
+        // initializePlugin() (e.g. in onGameLoaded / event callbacks). Closing it now
+        // makes any class first referenced later fail with NoClassDefFoundError.
 	}
 	
 	public static void forEach(Consumer<ClientPlugin> consumer) {

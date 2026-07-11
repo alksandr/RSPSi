@@ -5,3 +5,5 @@ include ':Editor'
 include ':Plugins'
 
 include 'Plugins:OSRSPlugin'
+include 'Plugins:OSRSPlugin-218'
+include 'Plugins:GallifreyPlugin'
