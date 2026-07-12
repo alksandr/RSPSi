@@ -2,6 +2,9 @@ buildscript {
     repositories {
         mavenCentral()
     }
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.7.0'
+    }
 }
 
 apply plugin: 'application'
@@ -27,9 +30,28 @@ dependencies {
     }
 }
 
-mainClassName = 'com.rspsi.LauncherWindow'
+// JavaFX jmods are NOT published to Maven Central and the Gradle JDK (openjdk-21.0.2)
+// bundles none, so jlink can't resolve javafx.* for the runtime image. Beryx builds jlink's
+// module path solely from <javaHome>/jmods (last --module-path wins, so appending one via
+// options does nothing), so point javaHome at a JDK-21 home whose jmods dir also holds the
+// javafx*.jmod files. Editor/build_fx_jdk.ps1 builds that home (JDK junctions + merged jmods);
+// override with -PfxJavaHome=/path/to/fx-bundled-jdk-21.
+def fxJavaHome = providers.gradleProperty('fxJavaHome')
+        .getOrElse(layout.projectDirectory.dir('fx-jdk').asFile.absolutePath)
+
+// Fail early with a fixable message if the synthetic FX JDK isn't built yet (fresh clone / CI).
+tasks.named('jre') {
+    doFirst {
+        if (!file("${fxJavaHome}/bin/jlink.exe").exists()) {
+            throw new GradleException("FX JDK not found at ${fxJavaHome}. Run:\n" +
+                "  powershell -ExecutionPolicy Bypass -File Editor/build_fx_jdk.ps1\n" +
+                "or point at an FX-bundled JDK 21 with -PfxJavaHome=<path>.")
+        }
+    }
+}
 
 runtime {
+    javaHome = fxJavaHome
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
     modules = [
             'javafx.base',
@@ -91,6 +113,30 @@ runtime {
 }
 
 application {
-    mainClassName = "com.rspsi.ui.LauncherWindow"
+    // Non-Application entry point so the classpath/shadow startScripts (bare `java -cp`)
+    // don't trip JavaFX's "runtime components are missing" check. See com.rspsi.ui.Main.
+    mainClassName = "com.rspsi.ui.Main"
     applicationName = 'RSPSi'
 }
+
+tasks.register('proguard', proguard.gradle.ProGuardTask) {
+    dependsOn tasks.named('shadowJar')
+    injars tasks.named('shadowJar').get().archiveFile
+    outjars layout.buildDirectory.file('libs/RSPSi-obfuscated.jar')
+    libraryjars "${System.getProperty('java.home')}/jmods", jarfilter: '!**.jar', filter: '!module-info.class'
+    configuration file('proguard.conf')
+}
+
+// Distribution (runtime image / jpackage installer) is built from installShadowDist's
+// lib/ dir. Swap the plain shadow jar there for the ProGuard output so every
+// distribution build (runtime, runtimeZip, jpackageImage, jpackage) is obfuscated
+// automatically, with no separate manual step.
+tasks.register('proguardInstall', Copy) {
+    dependsOn tasks.named('installShadowDist'), tasks.named('proguard')
+    from(layout.buildDirectory.file('libs/RSPSi-obfuscated.jar'))
+    into { tasks.named('installShadowDist').get().destinationDir.toPath().resolve('lib') }
+    rename { tasks.named('shadowJar').get().archiveFileName.get() }
+}
+
+tasks.named('jpackageImage') { dependsOn tasks.named('proguardInstall') }
+tasks.named('runtime') { dependsOn tasks.named('proguardInstall') }

@@ -51,7 +51,9 @@ subprojects {
 
     apply plugin: 'org.openjfx.javafxplugin'
     javafx {
-        version = "17"
+        // Keep in lockstep with the JavaFX jmods bundled into the jlink runtime image
+        // (Editor/build_fx_jdk.ps1 default: openjdk-17.0.14). Compile FX == runtime FX.
+        version = "17.0.14"
         modules = ['javafx.base', 'javafx.fxml', 'javafx.graphics', 'javafx.controls', 'javafx.media', 'javafx.swing']
     }
 

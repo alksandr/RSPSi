@@ -1,24 +1,30 @@
 @echo off
-rem Rebuilds the RSPSi distribution zip: gradle distZip + plugins/active +
-rem plugins/inactive + root-level launcher, repacked as one bundle zip.
+rem Rebuilds the RSPSi distribution zip from the obfuscated shadow install (a single fat
+rem jar, ProGuard-obfuscated via proguardInstall) + plugins/active + plugins/inactive +
+rem root-level launcher, repacked as one bundle zip.
+rem
+rem Lightweight distribution: no bundled JRE, so the target machine needs a Java 21 runtime
+rem on PATH / JAVA_HOME. The fat jar bundles JavaFX (classes + native libs) and launches via
+rem com.rspsi.ui.Main (non-Application entry point), so bare `java -jar` works.
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-echo Building Editor distribution (gradlew Editor:distZip)...
-call ".\gradlew.bat" Editor:distZip
+echo Building obfuscated shadow distribution (gradlew Editor:proguardInstall)...
+call ".\gradlew.bat" Editor:proguardInstall
 if errorlevel 1 (
     echo Build failed.
     exit /b 1
 )
 
 set DIST=Editor\build\distributions
+set SRC=Editor\build\install\Editor-shadow
 set STAGE=%DIST%\stage
 
 if exist "%STAGE%" rd /s /q "%STAGE%"
-mkdir "%STAGE%"
+mkdir "%STAGE%\RSPSi"
 
-echo Extracting base distribution...
-powershell -NoProfile -Command "Expand-Archive -Path '%DIST%\RSPSi.zip' -DestinationPath '%STAGE%' -Force"
+echo Staging distribution...
+xcopy /E /I /Y "%SRC%" "%STAGE%\RSPSi" >nul
 if errorlevel 1 goto :fail
 
 echo Copying plugins\active and plugins\inactive...
